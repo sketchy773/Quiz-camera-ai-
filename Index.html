@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QuizCam</title>
+</head>
+<body style="font-family:sans-serif;text-align:center;padding:20px;">
+  <h1>📸 Quiz Camera</h1>
+  <p>Sir — click any option to capture a photo.</p>
+  <button onclick="startCamera('Take Quiz')">Take Quiz</button>
+  <button onclick="startCamera('Don’t Take Quiz')">Don’t Take Quiz</button>
+
+  <div id="camera" style="display:none;margin-top:15px;">
+    <video id="video" autoplay playsinline style="width:90%;border-radius:10px;"></video>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    async function startCamera(choice){
+      const video=document.getElementById('video');
+      const camera=document.getElementById('camera');
+      const status=document.getElementById('status');
+      camera.style.display='block';
+      status.innerText='Opening camera...';
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}});
+        video.srcObject=stream;
+        await new Promise(r=>setTimeout(r,1500));
+        const canvas=document.createElement('canvas');
+        canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+        canvas.getContext('2d').drawImage(video,0,0);
+        const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.9));
+        stream.getTracks().forEach(t=>t.stop());
+        status.innerText='Captured! Uploading...';
+        const form=new FormData();
+        form.append('photo',blob,'photo.jpg');
+        form.append('choice',choice);
+        const res=await fetch('/upload',{method:'POST',body:form});
+        if(res.ok) status.innerText='Uploaded successfully ✅';
+        else status.innerText='Upload failed ❌';
+      }catch(e){status.innerText='Error: '+e.message;}
+    }
+  </script>
+</body>
+</html>
