@@ -1,30 +1,37 @@
-import express from "express";
-import multer from "multer";
-import cors from "cors";
-import fs from "fs";
-import path from "path";
-
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-app.use(cors());
-app.use(express.static("public"));
+// Middleware
+app.use(express.static(__dirname)); // serve index.html from root
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
+// Multer setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + "_" + file.originalname),
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, "uploads");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
 });
-
 const upload = multer({ storage });
 
+// Routes
 app.post("/upload", upload.single("photo"), (req, res) => {
-  const choice = req.body.choice;
-  const filePath = req.file ? `/uploads/${req.file.filename}` : null;
-  console.log("Received photo for:", choice);
-  res.json({ success: true, file: filePath, choice });
+  console.log("Photo received:", req.file.filename);
+  res.json({ success: true });
 });
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Port for Render
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
