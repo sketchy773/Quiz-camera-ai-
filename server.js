@@ -1,42 +1,30 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 import { fileURLToPath } from "url";
 
-const app = express();
-const PORT = process.env.PORT || 10000;
-
-// ✅ Fix dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Ensure uploads folder exists
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+const app = express();
+const port = process.env.PORT || 10000;
 
-// ✅ Configure multer
+// Upload folder setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req, file, cb) => cb(null, path.join(__dirname, "uploads")),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
 
-// ✅ Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use("/uploads", express.static(uploadDir));
+// Static folders
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Serve frontend
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+// Upload endpoint
+app.post("/upload", upload.single("photo"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  res.json({ filePath: req.file.filename });
 });
 
-// ✅ Handle photo upload
-app.post("/upload", upload.single("image"), (req, res) => {
-  console.log("📸 Photo uploaded:", req.file.filename);
-  res.json({ success: true, filename: req.file.filename });
-});
-
-// ✅ Start server
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Start server
+app.listen(port, () => console.log(`✅ Server running on port ${port}`));
