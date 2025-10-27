@@ -14,7 +14,6 @@ const port = process.env.PORT || 10000;
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
-  console.log("📁 'uploads' folder created");
 }
 
 // ✅ Multer setup for file storage
@@ -24,8 +23,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ✅ Serve static files (frontend)
-app.use(express.static(path.join(__dirname, "public")));
+// ✅ Serve static frontend (index.html)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 // ✅ Serve uploaded images publicly
 app.use("/uploads", express.static(uploadDir));
@@ -33,22 +34,17 @@ app.use("/uploads", express.static(uploadDir));
 // ✅ Upload route
 app.post("/upload", upload.single("photo"), (req, res) => {
   if (!req.file) {
-    console.log("❌ Upload failed: No file received");
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  // ✅ Full public URL for the uploaded photo
-  const fileUrl = `https://quiz-camera-ai-1.onrender.com/uploads/${req.file.filename}`;
-  console.log("📸 New photo uploaded:", fileUrl);
+  const fileURL = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+  console.log("📸 Photo Uploaded:", fileURL); // <-- Ye logs me dikhega
 
   res.json({
     message: "Photo uploaded successfully",
-    filePath: fileUrl
+    fileURL
   });
 });
 
 // ✅ Start server
-app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
-  console.log(`🌐 Live at: https://quiz-camera-ai-1.onrender.com`);
-});
+app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
