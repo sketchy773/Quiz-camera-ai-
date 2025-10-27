@@ -5,76 +5,46 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// ES module ke liye __dirname setup
+// For ES Modules (__dirname setup)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Upload folder ka path
-const UPLOAD_DIR = path.join(__dirname, "uploads");
-
-// Agar uploads folder nahi hai to bana lo
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR);
+// ✅ Make sure uploads folder exists
+const uploadPath = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath);
 }
 
-// Middleware
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public"))); // Serve index.html
-app.use("/uploads", express.static(UPLOAD_DIR)); // Serve uploaded images
-
-// Multer setup
+// ✅ Multer setup (for image uploads)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, UPLOAD_DIR);
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + ".jpg");
+    cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
 
 const upload = multer({ storage });
 
-// Upload route
-app.post("/upload", upload.single("photo"), (req, res) => {
-  console.log("📸 Photo received:", req.file.filename);
-  res.json({ success: true, filename: req.file.filename });
+// ✅ Middleware
+app.use(express.static(path.join(__dirname, "public"))); // serve frontend
+app.use(express.json());
+
+// ✅ Root route — to fix "Cannot GET /"
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Route to view uploaded photos
-app.get("/photos", (req, res) => {
-  fs.readdir(UPLOAD_DIR, (err, files) => {
-    if (err) {
-      return res.status(500).send("Error reading upload folder");
-    }
-
-    // Simple HTML list of uploaded photos
-    const html = `
-      <html>
-        <head><title>Uploaded Photos</title></head>
-        <body style="font-family: sans-serif; background: #f5f5f5; padding: 20px;">
-          <h2>📷 Uploaded Photos</h2>
-          ${
-            files.length === 0
-              ? "<p>No photos uploaded yet.</p>"
-              : files
-                  .map(
-                    (file) =>
-                      `<div style="margin-bottom:10px">
-                         <img src="/uploads/${file}" width="200" style="border-radius:10px;box-shadow:0 0 5px #aaa"/>
-                         <p>${file}</p>
-                       </div>`
-                  )
-                  .join("")
-          }
-        </body>
-      </html>`;
-    res.send(html);
-  });
+// ✅ Route for uploading image
+app.post("/upload", upload.single("image"), (req, res) => {
+  console.log("📸 Image received:", req.file.filename);
+  res.json({ success: true, file: req.file.filename });
 });
 
-// Start server
+// ✅ Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
