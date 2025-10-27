@@ -1,47 +1,47 @@
 import express from "express";
-import multer from "multer";
 import path from "path";
 import fs from "fs";
+import bodyParser from "body-parser";
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 
-// Ensure 'uploads' folder exists
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+const __dirname = path.resolve();
 
-// Set storage for multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => {
-    const filename = `${Date.now()}-${file.originalname}`;
-    cb(null, filename);
-  },
+// Middleware
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(express.static(path.join(__dirname, "public")));
+
+// 📸 POST route to receive image from client
+app.post("/upload", (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ message: "No image received" });
+
+    // Remove "data:image/png;base64," part
+    const base64Data = image.replace(/^data:image\/png;base64,/, "");
+    const fileName = `photo_${Date.now()}.png`;
+    const savePath = path.join(__dirname, "uploads");
+
+    // Ensure uploads folder exists
+    if (!fs.existsSync(savePath)) fs.mkdirSync(savePath);
+
+    // Save image file
+    fs.writeFileSync(path.join(savePath, fileName), base64Data, "base64");
+    console.log(`✅ Image saved: ${fileName}`);
+
+    res.status(200).json({ message: "Image uploaded successfully" });
+  } catch (error) {
+    console.error("❌ Error saving image:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
-
-const upload = multer({ storage });
-
-// Serve static files from public folder
-app.use(express.static("public"));
-
-// Upload endpoint
-app.post("/upload", upload.single("photo"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-
-  const fileUrl = `https://${req.hostname}/uploads/${req.file.filename}`;
-  console.log("📸 Uploaded File URL:", fileUrl);
-
-  res.json({ message: "Photo uploaded successfully!", url: fileUrl });
-});
-
-// Serve uploaded images publicly
-app.use("/uploads", express.static("uploads"));
 
 // Default route
 app.get("/", (req, res) => {
-  res.send("✅ Quiz Camera AI Server is running!");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
