@@ -1,50 +1,53 @@
-import express from "express";
-import multer from "multer";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
-const port = process.env.PORT || 10000;
 
-// ✅ Ensure uploads folder exists
-const uploadDir = path.join(__dirname, "uploads");
+// 📁 Ensure public/uploads folder exists
+const uploadDir = path.join(__dirname, "public", "uploads");
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// ✅ Multer setup for file storage
+// 🖼️ Multer storage setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
-});
-const upload = multer({ storage });
-
-// ✅ Serve static frontend (index.html)
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
 });
 
-// ✅ Serve uploaded images publicly
-app.use("/uploads", express.static(uploadDir));
+const upload = multer({ storage: storage });
 
-// ✅ Upload route
+// 🧱 Middleware
+app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
+
+// 📤 Handle photo upload
 app.post("/upload", upload.single("photo"), (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
+    return res.status(400).json({ message: "No file uploaded" });
   }
 
-  const fileURL = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-  console.log("📸 Photo Uploaded:", fileURL); // <-- Ye logs me dikhega
+  // ✅ Public URL for the uploaded image
+  const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+  console.log("📸 New photo uploaded:", fileUrl);
 
   res.json({
     message: "Photo uploaded successfully",
-    fileURL
+    url: fileUrl,
   });
 });
 
-// ✅ Start server
-app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
+// 🏠 Root route
+app.get("/", (req, res) => {
+  res.send("✅ Quiz Camera AI Server is running!");
+});
+
+// 🚀 Start server (Render uses dynamic port)
+const port = process.env.PORT || 8080;
+app.listen(port, () => console.log(`✅ Server running on port ${port}`));
