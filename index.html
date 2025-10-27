@@ -1,91 +1,80 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>📸 Quiz Camera</title>
+  <title>Quiz Camera AI</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin-top: 40px;
+      background: #f3f4f6;
+      padding: 20px;
     }
-    video, canvas {
-      width: 90%;
-      max-width: 400px;
+    video, img {
+      width: 300px;
+      height: auto;
+      margin-top: 20px;
       border-radius: 10px;
-      border: 2px solid #000;
-      margin-top: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
     button {
-      margin: 8px;
+      margin-top: 15px;
       padding: 10px 20px;
-      border: none;
-      background: #007bff;
+      background: #2563eb;
       color: white;
-      font-size: 16px;
+      border: none;
       border-radius: 8px;
+      font-size: 16px;
       cursor: pointer;
     }
     button:hover {
-      background: #0056b3;
+      background: #1e40af;
+    }
+    #photoURL {
+      margin-top: 20px;
+      word-wrap: break-word;
+      color: #111827;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h1>📸 Quiz Camera</h1>
-  <p>Sir — click any option to capture a photo.</p>
-
-  <video id="camera" autoplay playsinline></video>
-  <canvas id="canvas" style="display:none;"></canvas>
-  <br />
-
-  <button onclick="capturePhoto('Take Quiz')">Take Quiz</button>
-  <button onclick="capturePhoto('Don’t Take Quiz')">Don’t Take Quiz</button>
-
-  <p id="status"></p>
+  <h2>Quiz Camera AI 📸</h2>
+  <video id="video" autoplay></video><br />
+  <button id="capture">Capture Photo</button>
+  <div id="result"></div>
 
   <script>
-    const video = document.getElementById('camera');
-    const canvas = document.getElementById('canvas');
-    const statusText = document.getElementById('status');
+    const video = document.getElementById("video");
+    const result = document.getElementById("result");
 
-    // ✅ Start front camera
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-      .then(stream => {
-        video.srcObject = stream;
-      })
-      .catch(err => {
-        alert("Camera access denied! " + err);
-      });
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => video.srcObject = stream)
+      .catch(err => alert("Camera access denied: " + err));
 
-    async function capturePhoto(option) {
-      const context = canvas.getContext('2d');
+    document.getElementById("capture").addEventListener("click", () => {
+      const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
 
       canvas.toBlob(async (blob) => {
         const formData = new FormData();
-        formData.append("image", blob, "photo.jpg"); // 👈 must match server.js field name
+        formData.append("photo", blob, "photo.png");
+        const res = await fetch("/upload", { method: "POST", body: formData });
+        const data = await res.json();
 
-        statusText.innerText = "Uploading...";
-        try {
-          const response = await fetch("/upload", {
-            method: "POST",
-            body: formData
-          });
-          const result = await response.json();
-          if (result.success) {
-            statusText.innerHTML = `✅ Uploaded: ${result.filename}`;
-          } else {
-            statusText.innerHTML = "❌ Upload failed";
-          }
-        } catch (err) {
-          statusText.innerHTML = "❌ Upload error: " + err;
-        }
-      }, "image/jpeg");
-    }
+        // Show photo preview + URL
+        result.innerHTML = `
+          <h3>📸 Captured Photo:</h3>
+          <img src="${data.url}" alt="Captured Photo" />
+          <p id="photoURL"><strong>Access URL:</strong><br>
+          <a href="${data.url}" target="_blank">${data.url}</a></p>
+        `;
+      }, "image/png");
+    });
   </script>
 </body>
 </html>
