@@ -7,44 +7,46 @@ import { fileURLToPath } from "url";
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// For ES Modules (__dirname setup)
+// ✅ Fix __dirname in ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Make sure uploads folder exists
-const uploadPath = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath);
+// ✅ Ensure uploads folder exists
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
 }
 
-// ✅ Multer setup (for image uploads)
+// ✅ Multer setup for image uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadPath);
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
-
 const upload = multer({ storage });
 
 // ✅ Middleware
-app.use(express.static(path.join(__dirname, "public"))); // serve frontend
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// ✅ Root route — to fix "Cannot GET /"
+// ✅ Serve static files (for uploaded images)
+app.use("/uploads", express.static(uploadDir));
+
+// ✅ Serve index.html from root
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ✅ Route for uploading image
+// ✅ Handle image upload from frontend
 app.post("/upload", upload.single("image"), (req, res) => {
   console.log("📸 Image received:", req.file.filename);
-  res.json({ success: true, file: req.file.filename });
+  res.json({ success: true, filename: req.file.filename });
 });
 
-// ✅ Start the server
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
