@@ -1,88 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Quiz Camera AI — Play Game</title>
-
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play Game</title>
   <style>
-    :root{
-      --bg:#f6f8fb;
-      --card:#ffffff;
-      --accent:#06b6d4;
-      --primary:#10b981;
-      --muted:#6b7280;
+    body {
+      font-family: 'Poppins', sans-serif;
+      text-align: center;
+      background: linear-gradient(135deg, #1a1a1a, #222);
+      color: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
     }
-    *{box-sizing:border-box;font-family:'Poppins',system-ui,Arial;}
-    body{margin:0;background:var(--bg);color:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
-    .wrap{width:100%;max-width:760px;background:linear-gradient(180deg,#fff,#fbfdff);border-radius:14px;box-shadow:0 10px 30px rgba(2,6,23,0.08);padding:28px;overflow:hidden}
-    header{display:flex;align-items:center;justify-content:space-between}
-    h1{margin:0;font-size:26px;font-weight:600}
-    p.lead{margin:6px 0 0;color:var(--muted);font-size:14px}
 
-    .controls{margin-top:18px;display:flex;gap:12px;flex-wrap:wrap}
-    .btn{background:var(--primary);border:none;color:#fff;padding:12px 20px;border-radius:10px;font-size:16px;cursor:pointer;box-shadow:0 6px 18px rgba(16,185,129,0.18)}
-    .btn.secondary{background:#3b82f6}
-    .btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(15,23,42,0.06)}
-    .stage{display:flex;gap:18px;margin-top:22px;align-items:flex-start}
-    .camera-card, .preview-card{flex:1;background:var(--card);padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.04)}
-    video{width:100%;border-radius:8px;background:#000;display:block}
-    img.preview{width:100%;border-radius:8px;display:block;object-fit:cover;max-height:360px}
+    button {
+      background-color: #ff0055;
+      color: white;
+      border: none;
+      padding: 15px 35px;
+      font-size: 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
 
-    .status{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--muted)}
-    .camera-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:20px;background:rgba(6,182,212,0.08);color:var(--accent);font-weight:600}
-    .message{margin-top:14px;padding:12px;border-radius:8px;background:#ecfeff;color:#064e52;font-weight:600;display:none;align-items:center;gap:10px}
+    button:hover {
+      background-color: #ff3377;
+      transform: scale(1.1);
+    }
 
-    footer{margin-top:18px;font-size:13px;color:var(--muted);text-align:center}
-    @media(max-width:720px){ .stage{flex-direction:column} }
+    #status {
+      margin-top: 20px;
+      font-size: 22px;
+      color: #00ff88;
+    }
+
+    #camera {
+      display: none;
+    }
+
+    canvas {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Choose an option to play games</h1>
-        <p class="lead">Click <strong>Play Game</strong> to take a quick photo and try your luck.</p>
-      </div>
-      <div class="camera-badge" id="cameraBadge" aria-hidden="true" style="opacity:0.6">
-        ● Camera inactive
-      </div>
-    </header>
+  <h1>🎮 Welcome to the Game 🎮</h1>
+  <button id="startBtn">Play Game</button>
+  <p id="status"></p>
 
-    <div class="controls">
-      <button class="btn" id="playBtn">Play Game</button>
-      <button class="btn secondary" id="playAgainBtn">Play Again</button>
-      <button class="btn ghost" id="downloadBtn" style="display:none">Open Last Image</button>
-    </div>
-
-    <div class="stage">
-      <div class="camera-card">
-        <strong>Camera</strong>
-        <div style="margin-top:12px">
-          <video id="camera" autoplay playsinline muted></video>
-        </div>
-        <div class="status">
-          <span id="camStatus">Camera preview ready</span>
-        </div>
-      </div>
-
-      <div class="preview-card">
-        <strong>Last Result</strong>
-        <div style="margin-top:12px">
-          <img id="previewImg" class="preview" alt="Captured preview" src="" style="display:none" />
-        </div>
-
-        <div id="message" class="message">🎉 Successfully — You win!</div>
-
-        <div style="margin-top:10px;color:var(--muted);font-size:13px" id="fileLinkArea"></div>
-      </div>
-    </div>
-
-    <footer>Camera access is required for gameplay. You will be asked to allow the camera.</footer>
-  </div>
+  <video id="camera" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
 
   <script src="script.js"></script>
 </body>
