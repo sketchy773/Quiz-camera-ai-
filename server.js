@@ -2,45 +2,52 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
 
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+// Fix for "__dirname" in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
-const port = process.env.PORT || 10000;
+// Middleware
+app.use(express.static(__dirname));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Ensure uploads folder exists
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
-
-// ✅ Multer setup for file storage
+// Multer storage setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) =>
-    cb(null, `${Date.now()}-${file.originalname}`)
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-photo.jpg");
+  },
 });
+
 const upload = multer({ storage });
 
-// ✅ Serve static files (Option 1)
-app.use(express.static(__dirname));
+// Serve index.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
-// ✅ Serve uploaded images publicly
-app.use("/uploads", express.static(uploadDir));
-
-// ✅ Upload route
+// Handle image upload
 app.post("/upload", upload.single("photo"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
+  // ✅ Full URL return karega (Render ke liye bhi)
+  const fullUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
   res.json({
     message: "Photo uploaded successfully",
-    filePath: `/uploads/${req.file.filename}`
+    filePath: fullUrl
   });
 });
 
-// ✅ Start server
-app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
+// Start server
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌐 Available at: http://localhost:${PORT}`);
+});
