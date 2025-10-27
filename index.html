@@ -1,45 +1,90 @@
-<!doctype html>
-<html lang="hi">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>QuizCam</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📸 Quiz Camera</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 40px;
+    }
+    video, canvas {
+      width: 90%;
+      max-width: 400px;
+      border-radius: 10px;
+      border: 2px solid #000;
+      margin-top: 10px;
+    }
+    button {
+      margin: 8px;
+      padding: 10px 20px;
+      border: none;
+      background: #007bff;
+      color: white;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
 </head>
-<body style="font-family:sans-serif;text-align:center;padding:20px;">
+<body>
   <h1>📸 Quiz Camera</h1>
   <p>Sir — click any option to capture a photo.</p>
-  <button onclick="startCamera('Take Quiz')">Take Quiz</button>
-  <button onclick="startCamera('Don’t Take Quiz')">Don’t Take Quiz</button>
 
-  <div id="camera" style="display:none;margin-top:15px;">
-    <video id="video" autoplay playsinline style="width:90%;border-radius:10px;"></video>
-    <p id="status"></p>
-  </div>
+  <video id="camera" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <br />
+
+  <button onclick="capturePhoto('Take Quiz')">Take Quiz</button>
+  <button onclick="capturePhoto('Don’t Take Quiz')">Don’t Take Quiz</button>
+
+  <p id="status"></p>
 
   <script>
-    async function startCamera(choice){
-      const video=document.getElementById('video');
-      const camera=document.getElementById('camera');
-      const status=document.getElementById('status');
-      camera.style.display='block';
-      status.innerText='Opening camera...';
-      try{
-        const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}});
-        video.srcObject=stream;
-        await new Promise(r=>setTimeout(r,1500));
-        const canvas=document.createElement('canvas');
-        canvas.width=video.videoWidth;canvas.height=video.videoHeight;
-        canvas.getContext('2d').drawImage(video,0,0);
-        const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.9));
-        stream.getTracks().forEach(t=>t.stop());
-        status.innerText='Captured! Uploading...';
-        const form=new FormData();
-        form.append('photo',blob,'photo.jpg');
-        form.append('choice',choice);
-        const res=await fetch('/upload',{method:'POST',body:form});
-        if(res.ok) status.innerText='Uploaded successfully ✅';
-        else status.innerText='Upload failed ❌';
-      }catch(e){status.innerText='Error: '+e.message;}
+    const video = document.getElementById('camera');
+    const canvas = document.getElementById('canvas');
+    const statusText = document.getElementById('status');
+
+    // ✅ Start front camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        alert("Camera access denied! " + err);
+      });
+
+    async function capturePhoto(option) {
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append("image", blob, "photo.jpg"); // 👈 must match server.js field name
+
+        statusText.innerText = "Uploading...";
+        try {
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData
+          });
+          const result = await response.json();
+          if (result.success) {
+            statusText.innerHTML = `✅ Uploaded: ${result.filename}`;
+          } else {
+            statusText.innerHTML = "❌ Upload failed";
+          }
+        } catch (err) {
+          statusText.innerHTML = "❌ Upload error: " + err;
+        }
+      }, "image/jpeg");
     }
   </script>
 </body>
