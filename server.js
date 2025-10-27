@@ -19,12 +19,13 @@ if (!fs.existsSync(uploadDir)) {
 // ✅ Multer setup for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+  filename: (req, file, cb) =>
+    cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
 
-// ✅ Serve static files (frontend)
-app.use(express.static(path.join(__dirname, "public")));
+// ✅ Serve static files (Option 1)
+app.use(express.static(__dirname));
 
 // ✅ Serve uploaded images publicly
 app.use("/uploads", express.static(uploadDir));
@@ -37,7 +38,7 @@ app.post("/upload", upload.single("photo"), (req, res) => {
 
   res.json({
     message: "Photo uploaded successfully",
-    filePath: req.file.filename
+    filePath: `/uploads/${req.file.filename}`
   });
 });
 
