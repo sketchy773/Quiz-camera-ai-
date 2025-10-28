@@ -3,58 +3,56 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import fetch from "node-fetch";
+import dotenv from "dotenv";
 
+dotenv.config();
 const app = express();
 const port = process.env.PORT || 10000;
 
+// Telegram credentials from environment variables
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+// Middleware setup
 app.use(express.static("public"));
 
+// Multer setup for uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = "uploads";
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath);
-    }
-    cb(null, uploadPath);
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
   },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+  filename: function (req, file, cb) {
+    cb(null, "photo_" + Date.now() + path.extname(file.originalname));
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage: storage });
 
-// ✅ Telegram Bot Credentials
-const BOT_TOKEN = "8323140156:AAEgVqXYHclaAmZXG7nbnMLfZLh9_0RoK_E";
-const CHAT_ID = "6912530259";
+// Route to handle image upload
+app.post("/upload", upload.single("photo"), async (req, res) => {
+  const filePath = req.file.path;
+  console.log(`📸 New image uploaded: ${filePath}`);
 
-// ✅ Function to send Telegram alert
-async function sendTelegramMessage(imagePath) {
   try {
-    const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-    const fileStream = fs.createReadStream(imagePath);
-
+    // Send photo to Telegram
+    const telegramURL = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
     const formData = new FormData();
     formData.append("chat_id", CHAT_ID);
-    formData.append("caption", "📸 New image uploaded to Render Logs!");
-    formData.append("photo", fileStream);
+    formData.append("caption", `📸 New photo uploaded: ${req.file.filename}`);
+    formData.append("photo", fs.createReadStream(filePath));
 
-    const res = await fetch(telegramUrl, { method: "POST", body: formData });
-    const data = await res.json();
-    console.log("Telegram response:", data);
-  } catch (err) {
-    console.error("Error sending Telegram message:", err);
+    const response = await fetch(telegramURL, { method: "POST", body: formData });
+    const result = await response.json();
+
+    console.log("✅ Telegram response:", result);
+  } catch (error) {
+    console.error("❌ Error sending photo to Telegram:", error);
   }
-}
 
-// ✅ Endpoint to handle uploads
-app.post("/upload", upload.single("photo"), async (req, res) => {
-  console.log("Image uploaded:", req.file.path);
-  await sendTelegramMessage(req.file.path); // Telegram alert here
-  res.json({ success: true });
+  res.json({ success: true, message: "Photo uploaded successfully!" });
 });
 
-// ✅ Start Server
+// Start the server
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
