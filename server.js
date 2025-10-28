@@ -1,44 +1,48 @@
 import express from "express";
 import multer from "multer";
+import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// static folder
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Ensure uploads folder exists
+const uploadDir = "./uploads";
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
-// multer setup
+// Serve static files (frontend)
+app.use(express.static("public"));
+
+// Set up multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
+  destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  }
+    const uniqueName = `capture_${Date.now()}.jpg`;
+    cb(null, uniqueName);
+  },
 });
+
 const upload = multer({ storage });
 
-// route
+// Upload endpoint
 app.post("/upload", upload.single("photo"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: "No file uploaded" });
   }
-  const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-  console.log("📸 Photo uploaded:", imageUrl);
-  res.json({ success: true, imageUrl });
+
+  console.log("📸 Photo uploaded:", req.file.filename);
+  res.json({
+    success: true,
+    message: "Photo uploaded successfully!",
+    filePath: `/uploads/${req.file.filename}`,
+  });
 });
 
-// home
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+// Serve uploaded images
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-// start server
-app.listen(port, () => {
-  console.log(`✅ Server running on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
