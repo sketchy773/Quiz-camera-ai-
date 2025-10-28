@@ -1,65 +1,46 @@
 import express from "express";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 
-// Cloudinary config (from Render env variables)
+app.use(express.static("public"));
+app.use(express.json());
+
+// Cloudinary config
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUD_KEY,
   api_secret: process.env.CLOUD_SECRET,
 });
 
-// Temp upload folder (Render requirement)
-const UPLOAD_DIR = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
-
-// Serve static files
-app.use(express.static(path.join(process.cwd(), "public")));
-
-// Multer setup (for temporary storage)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => cb(null, `capture_${Date.now()}.jpg`),
-});
-const upload = multer({ storage });
-
-// Upload route
-app.post("/upload", upload.single("photo"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: "No file uploaded" });
-  }
-
-  try {
-    // Upload file to Cloudinary
-    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-      folder: "quiz-camera-ai",
-      use_filename: true,
-    });
-
-    // Delete local temp file to save space
-    fs.unlinkSync(req.file.path);
-
-    console.log(`📸 Photo uploaded to Cloudinary`);
-    console.log(`🔗 Open: ${uploadResult.secure_url}`);
-
-    return res.json({
-      success: true,
-      absoluteUrl: uploadResult.secure_url,
-    });
-  } catch (err) {
-    console.error("Cloudinary upload error:", err);
-    return res.status(500).json({ success: false, message: "Upload failed" });
-  }
+// Multer storage for Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "quiz-camera-ai",
+    allowed_formats: ["jpg", "png"],
+    transformation: [{ width: 800, height: 800, crop: "limit" }],
+  },
 });
 
-// Fallback route
-app.get("/", (req, res) => {
-  res.sendFile(path.join(process.cwd(), "public", "index.html"));
+const upload = multer({ storage: storage });
+
+// Capture route
+app.post("/upload", upload.single("photo"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+  console.log("📸 Photo uploaded:", req.file.path);
+  res.json({
+    message: "Photo uploaded successfully!",
+    url: req.file.path, // Permanent Cloudinary URL
+  });
 });
 
 // Start server
