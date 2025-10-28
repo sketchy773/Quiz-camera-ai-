@@ -28,17 +28,45 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// upload endpoint
+// keep track of last uploaded filename (in-memory)
+let lastUploaded = null;
+
 app.post("/upload", upload.single("photo"), (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ success: false, message: "No file" });
+    return res.status(400).json({ success: false, message: "No file uploaded" });
   }
+
+  lastUploaded = req.file.filename;
   const publicPath = `/uploads/${req.file.filename}`;
-  return res.json({ success: true, filePath: publicPath });
+
+  // Log absolute URL so Render logs show clickable link
+  const absoluteUrl = `${process.env.BASE_URL ? process.env.BASE_URL : `https://${process.env.RENDER_EXTERNAL_URL || req.hostname}`}${publicPath}`;
+  // If Render provides RENDER_EXTERNAL_URL env var (when using custom domain), we use it; otherwise fallback to req.hostname.
+  console.log(`📸 Photo uploaded: ${req.file.filename}`);
+  console.log(`🔗 Open: ${absoluteUrl}`);
+
+  return res.json({ success: true, filePath: publicPath, absoluteUrl });
 });
 
-// optional health route
+// handy endpoint to get last uploaded image absolute URL
+app.get("/last", (req, res) => {
+  if (!lastUploaded) return res.status(404).send("No uploads yet");
+  const publicPath = `/uploads/${lastUploaded}`;
+  const absoluteUrl = `${process.env.BASE_URL ? process.env.BASE_URL : `https://${process.env.RENDER_EXTERNAL_URL || req.hostname}`}${publicPath}`;
+  return res.json({ filePath: publicPath, absoluteUrl });
+});
+
+// optional: list all uploads (small helper)
+app.get("/list-uploads", (req, res) => {
+  try {
+    const files = fs.readdirSync(uploadsDir).sort().reverse();
+    const urls = files.map(f => `${process.env.BASE_URL ? process.env.BASE_URL : `https://${process.env.RENDER_EXTERNAL_URL || req.hostname}`}/uploads/${f}`);
+    return res.json({ count: files.length, files, urls });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/health", (req, res) => res.send("ok"));
 
-// start server
 app.listen(port, () => console.log(`✅ Server running on port ${port}`));
