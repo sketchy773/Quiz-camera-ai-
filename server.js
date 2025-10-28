@@ -1,56 +1,66 @@
 import express from "express";
 import multer from "multer";
-import fs from "fs";
 import path from "path";
+import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// ensure uploads directory exists (important on Render)
-const UPLOAD_DIR = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR);
-  console.log("✅ Created uploads folder");
-}
+// Cloudinary config (from Render env variables)
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_SECRET,
+});
 
-// serve frontend static
+// Temp upload folder (Render requirement)
+const UPLOAD_DIR = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
+
+// Serve static files
 app.use(express.static(path.join(process.cwd(), "public")));
 
-// serve uploads publicly
-app.use("/uploads", express.static(UPLOAD_DIR));
-
-// multer storage config
+// Multer setup (for temporary storage)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    // unique filename
-    cb(null, `capture_${Date.now()}.jpg`);
-  },
+  filename: (req, file, cb) => cb(null, `capture_${Date.now()}.jpg`),
 });
 const upload = multer({ storage });
 
-// upload endpoint
-app.post("/upload", upload.single("photo"), (req, res) => {
+// Upload route
+app.post("/upload", upload.single("photo"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: "No file uploaded" });
   }
 
-  // build absolute URL so Render logs show clickable link
-  const host = req.get("host"); // includes port if present
-  const proto = req.protocol;
-  const absoluteUrl = `${proto}://${host}/uploads/${req.file.filename}`;
+  try {
+    // Upload file to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: "quiz-camera-ai",
+      use_filename: true,
+    });
 
-  // log clickable URL in Render logs
-  console.log(`📸 Photo uploaded: ${req.file.filename}`);
-  console.log(`🔗 Open: ${absoluteUrl}`);
+    // Delete local temp file to save space
+    fs.unlinkSync(req.file.path);
 
-  return res.json({ success: true, filePath: `/uploads/${req.file.filename}`, absoluteUrl });
+    console.log(`📸 Photo uploaded to Cloudinary`);
+    console.log(`🔗 Open: ${uploadResult.secure_url}`);
+
+    return res.json({
+      success: true,
+      absoluteUrl: uploadResult.secure_url,
+    });
+  } catch (err) {
+    console.error("Cloudinary upload error:", err);
+    return res.status(500).json({ success: false, message: "Upload failed" });
+  }
 });
 
-// fallback to index
+// Fallback route
 app.get("/", (req, res) => {
   res.sendFile(path.join(process.cwd(), "public", "index.html"));
 });
 
-// start
+// Start server
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
