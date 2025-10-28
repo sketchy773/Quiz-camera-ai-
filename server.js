@@ -6,40 +6,51 @@ import path from "path";
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Ensure uploads folder exists
-const uploadDir = "./uploads";
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+// ensure uploads directory exists (important on Render)
+const UPLOAD_DIR = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR);
+  console.log("✅ Created uploads folder");
 }
 
-// Serve static files
-app.use(express.static("public"));
+// serve frontend static
+app.use(express.static(path.join(process.cwd(), "public")));
 
-// Multer storage
+// serve uploads publicly
+app.use("/uploads", express.static(UPLOAD_DIR));
+
+// multer storage config
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, `capture_${Date.now()}.jpg`)
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    // unique filename
+    cb(null, `capture_${Date.now()}.jpg`);
+  },
 });
-
 const upload = multer({ storage });
 
-// Upload route
+// upload endpoint
 app.post("/upload", upload.single("photo"), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false });
-  console.log("✅ Uploaded:", req.file.filename);
-  res.json({
-    success: true,
-    message: "Photo uploaded!",
-    filePath: `/uploads/${req.file.filename}`,
-  });
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file uploaded" });
+  }
+
+  // build absolute URL so Render logs show clickable link
+  const host = req.get("host"); // includes port if present
+  const proto = req.protocol;
+  const absoluteUrl = `${proto}://${host}/uploads/${req.file.filename}`;
+
+  // log clickable URL in Render logs
+  console.log(`📸 Photo uploaded: ${req.file.filename}`);
+  console.log(`🔗 Open: ${absoluteUrl}`);
+
+  return res.json({ success: true, filePath: `/uploads/${req.file.filename}`, absoluteUrl });
 });
 
-// Serve uploads
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-
+// fallback to index
 app.get("/", (req, res) => {
   res.sendFile(path.join(process.cwd(), "public", "index.html"));
 });
 
-// Start server
-app.listen(PORT, () => console.log(`✅ Live on port ${PORT}`));
+// start
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
