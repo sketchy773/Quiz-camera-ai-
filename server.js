@@ -12,37 +12,34 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
-// Serve static files (frontend)
+// Serve static files
 app.use(express.static("public"));
 
-// Set up multer for file uploads
+// Multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => {
-    const uniqueName = `capture_${Date.now()}.jpg`;
-    cb(null, uniqueName);
-  },
+  filename: (req, file, cb) => cb(null, `capture_${Date.now()}.jpg`)
 });
 
 const upload = multer({ storage });
 
-// Upload endpoint
+// Upload route
 app.post("/upload", upload.single("photo"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: "No file uploaded" });
-  }
-
-  console.log("📸 Photo uploaded:", req.file.filename);
+  if (!req.file) return res.status(400).json({ success: false });
+  console.log("✅ Uploaded:", req.file.filename);
   res.json({
     success: true,
-    message: "Photo uploaded successfully!",
+    message: "Photo uploaded!",
     filePath: `/uploads/${req.file.filename}`,
   });
 });
 
-// Serve uploaded images
+// Serve uploads
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+app.get("/", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "index.html"));
 });
+
+// Start server
+app.listen(PORT, () => console.log(`✅ Live on port ${PORT}`));
