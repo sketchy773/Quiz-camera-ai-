@@ -1,58 +1,56 @@
 import express from "express";
 import multer from "multer";
-import fs from "fs";
 import path from "path";
-import fetch from "node-fetch";
-import dotenv from "dotenv";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const port = process.env.PORT || 10000;
 
-// Telegram credentials from environment variables
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+// ensure uploads folder exists (in repo create uploads/.gitkeep and commit)
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log("uploads/ folder created");
+}
 
-// Middleware setup
-app.use(express.static("public"));
-
-// Multer setup for uploads
+// multer storage
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, "photo_" + Date.now() + path.extname(file.originalname));
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
+const upload = multer({ storage });
 
-const upload = multer({ storage: storage });
+app.use(express.static(path.join(__dirname, "public")));
 
-// Route to handle image upload
-app.post("/upload", upload.single("photo"), async (req, res) => {
-  const filePath = req.file.path;
-  console.log(`📸 New image uploaded: ${filePath}`);
+// serve uploads as public
+app.use("/uploads", express.static(uploadDir));
 
-  try {
-    // Send photo to Telegram
-    const telegramURL = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-    const formData = new FormData();
-    formData.append("chat_id", CHAT_ID);
-    formData.append("caption", `📸 New photo uploaded: ${req.file.filename}`);
-    formData.append("photo", fs.createReadStream(filePath));
-
-    const response = await fetch(telegramURL, { method: "POST", body: formData });
-    const result = await response.json();
-
-    console.log("✅ Telegram response:", result);
-  } catch (error) {
-    console.error("❌ Error sending photo to Telegram:", error);
+// upload route
+app.post("/upload", upload.single("photo"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: "No file uploaded" });
   }
 
-  res.json({ success: true, message: "Photo uploaded successfully!" });
+  // build public file url (works on Render)
+  const host = req.get("host");
+  const protocol = req.protocol;
+  const publicUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+
+  // log url so Render logs show it
+  console.log(`📸 Photo uploaded: ${publicUrl}`);
+
+  // respond with full URL
+  res.json({
+    success: true,
+    filePath: publicUrl,
+    filename: req.file.filename
+  });
 });
 
-// Start the server
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
 });
