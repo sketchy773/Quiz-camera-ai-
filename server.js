@@ -1,39 +1,44 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import TelegramBot from "node-telegram-bot-api";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-// Telegram setup
-const botToken = process.env.BOT_TOKEN;
-const chatId = process.env.CHAT_ID;
-const bot = new TelegramBot(botToken);
+// ensure uploads folder exists
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// Serve frontend
-app.use(express.static("public"));
+// serve public files and uploads
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/uploads", express.static(uploadsDir));
 
-// Setup uploads folder
+// multer setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, file.originalname),
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const safeName = Date.now() + "-capture-" + file.originalname.replace(/\s+/g, "_");
+    cb(null, safeName);
+  }
 });
 const upload = multer({ storage });
 
-// Handle uploads
+// upload endpoint
 app.post("/upload", upload.single("photo"), (req, res) => {
-  const filePath = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-  console.log("📸 Image captured:", filePath);
-
-  // Send message to Telegram
-  bot.sendMessage(chatId, `📸 New image uploaded:\n${filePath}`);
-
-  res.json({ success: true });
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file" });
+  }
+  const publicPath = `/uploads/${req.file.filename}`;
+  return res.json({ success: true, filePath: publicPath });
 });
 
-// Serve uploaded images
-app.use("/uploads", express.static("uploads"));
+// optional health route
+app.get("/health", (req, res) => res.send("ok"));
 
-// Start server
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// start server
+app.listen(port, () => console.log(`✅ Server running on port ${port}`));
